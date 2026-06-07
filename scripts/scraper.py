@@ -1,4 +1,4 @@
-import csv, os, re, sys, time, base64
+import csv, os, re, sys, time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -16,23 +16,28 @@ CSV_PATH = DATA_DIR / "history.csv"
 CSV_COLS = ["date"] + [a["key"] for a in ACCOUNTS]
 TW_TZ = timezone(timedelta(hours=8))
 
-def fetch_friends(page, url, name):
+def fetch_friends(page, url):
     try:
         page.goto(url, timeout=60000, wait_until="domcontentloaded")
         time.sleep(5)
-        # 截圖存成 base64 印出來看
-        screenshot = page.screenshot()
-        print(f"  [SCREENSHOT] {name}: {len(screenshot)} bytes")
-        # 印出頁面文字前 1000 字
         text = page.inner_text("body")
-        print(f"  [TEXT] {text[:500]!r}")
+        # 中文版：好友人數 71,110
+        m = re.search(r"好友人數\s*([\d,]+)", text)
+        if m:
+            return int(m.group(1).replace(",", ""))
+        # 英文版：Friends 1,745,028
         m = re.search(r"Friends\s+([\d,]+)", text)
         if m:
             return int(m.group(1).replace(",", ""))
-        m = re.search(r"Friends\s+([\d,]+)", page.content())
+        # 網頁原始碼
+        content = page.content()
+        m = re.search(r"好友人數\s*([\d,]+)", content)
         if m:
             return int(m.group(1).replace(",", ""))
-        print(f"  [WARN] 找不到好友數")
+        m = re.search(r"Friends\s+([\d,]+)", content)
+        if m:
+            return int(m.group(1).replace(",", ""))
+        print(f"  [WARN] 找不到好友數，頁面文字前300字：{text[:300]!r}")
         return None
     except Exception as e:
         print(f"  [ERR] {e}")
@@ -71,7 +76,7 @@ def main():
         page = context.new_page()
         for account in ACCOUNTS:
             print(f"抓取：{account['name']} ({account['url']})")
-            count = fetch_friends(page, account["url"], account["name"])
+            count = fetch_friends(page, account["url"])
             if count is not None:
                 row[account["key"]] = count
                 print(f"  ✓ {count:,}\n")
@@ -86,6 +91,8 @@ def main():
     if failed:
         print(f"⚠️ 失敗：{', '.join(failed)}")
         sys.exit(1)
+    else:
+        print("✨ 全部成功！")
 
 if __name__ == "__main__":
     main()
