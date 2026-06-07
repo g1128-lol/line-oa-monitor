@@ -1,0 +1,76 @@
+name: 每日抓取 LINE OA 好友數
+
+on:
+  # 台灣時間 10:00 = UTC 02:00
+  schedule:
+    - cron: "0 2 * * *"
+
+  # 手動觸發（方便測試）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "強制覆蓋今日資料 (FORCE=1)"
+        required: false
+        default: "0"
+
+jobs:
+  scrape:
+    name: 抓取好友數並提交 CSV
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # 需要寫入 repo（git push）
+
+    steps:
+      # 1. 取得程式碼
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 2. 設定 Python
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. 安裝相依套件
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. 執行爬蟲
+      - name: Run scraper
+        env:
+          FORCE: ${{ github.event.inputs.force || '0' }}
+        run: python scripts/scraper.py
+
+      # 5. 如果 CSV 有變動，自動 commit 並 push
+      - name: Commit updated CSV
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 只有檔案真的改變才 commit
+          if git diff --quiet data/history.csv 2>/dev/null && \
+             git ls-files --others --exclude-standard data/history.csv | grep -q .; then
+            # 新檔案（首次執行）
+            git add data/history.csv
+            git commit -m "data: add history.csv (first run)"
+            git push
+          elif ! git diff --quiet data/history.csv; then
+            git add data/history.csv
+            git commit -m "data: $(date -u '+%Y-%m-%d') LINE OA 好友數更新"
+            git push
+          else
+            echo "CSV 無異動，略過 commit。"
+          fi
+
+      # 6. 上傳 CSV 為 Artifact（即使 push 失敗也保留紀錄）
+      - name: Upload CSV artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: history-csv-${{ github.run_id }}
+          path: data/history.csv
+          retention-days: 30
