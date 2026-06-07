@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>房地產競品 LINE 好友數監控</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  body { font-family: sans-serif; max-width: 960px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+  h1 { font-size: 20px; color: #333; margin-bottom: 4px; }
+  .updated { font-size: 12px; color: #999; margin-bottom: 20px; }
+  .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .card .name { font-size: 12px; color: #666; margin-bottom: 6px; }
+  .card .num { font-size: 20px; font-weight: bold; color: #222; }
+  .card .delta { font-size: 11px; margin-top: 4px; }
+  .up { color: #16a34a; } .dn { color: #dc2626; }
+  .chart-box { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .chart-box h2 { font-size: 14px; color: #555; margin: 0 0 14px; }
+  .loading { text-align: center; padding: 60px; color: #999; }
+</style>
+</head>
+<body>
+<h1>房地產競品 LINE 好友數監控</h1>
+<div class="updated" id="updated">載入中...</div>
+<div class="cards" id="cards"><div class="loading">載入資料中...</div></div>
+<div class="chart-box"><h2>好友數趨勢</h2><canvas id="lineChart" height="80"></canvas></div>
+<div class="chart-box"><h2>每日新增好友數</h2><canvas id="barChart" height="80"></canvas></div>
+
+<script>
+const CSV_URL = 'https://raw.githubusercontent.com/yafeng326/line-oa-monitor/main/data/history.csv';
+const BRANDS = [
+  { key: 'reg5168', name: '5168實登', color: '#7c3aed' },
+  { key: 'buy5168', name: '5168買屋', color: '#2563eb' },
+  { key: 'f591',    name: '591房屋',  color: '#dc2626' },
+  { key: 'leju',    name: '樂居',     color: '#059669' },
+  { key: 'lehu',    name: '樂屋',     color: '#d97706' },
+];
+
+Papa.parse(CSV_URL, {
+  download: true, header: true, dynamicTyping: true,
+  complete: ({ data }) => {
+    const rows = data.filter(r => r.date);
+    if (!rows.length) return;
+    const latest = rows[rows.length - 1];
+    const prev = rows.length > 1 ? rows[rows.length - 2] : null;
+    const labels = rows.map(r =>
