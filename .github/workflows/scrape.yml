@@ -8,7 +8,7 @@ on:
 jobs:
   scrape:
     name: 抓取好友數並提交 CSV
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
 
