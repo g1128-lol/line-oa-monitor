@@ -1,9 +1,9 @@
-name: 每週LINE好友數報告
+name: 每天LINE好友數報告
 
 on:
   schedule:
-    # 每週二 UTC 02:05 = 台灣時間 10:05
-    - cron: "5 2 * * 2"
+    # 每天 UTC 02:05 = 台灣時間 10:30
+    - cron: "30 2 * * *"
   workflow_dispatch:
 
 jobs:
