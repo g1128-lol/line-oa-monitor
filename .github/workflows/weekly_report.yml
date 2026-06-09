@@ -22,7 +22,7 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
-          TO_EMAIL: judy.huang@housefun.com.tw
+          TO_EMAIL: yafeng326@gmail.com
         run: |
           python - <<'EOF'
           import smtplib, csv, os
