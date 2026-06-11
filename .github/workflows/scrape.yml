@@ -32,6 +32,3 @@ jobs:
           git add data/history.csv
           git diff --staged --quiet || git commit -m "data: $(date -u '+%Y-%m-%d') LINE OA 好友數更新"
           git push
-      - name: Trigger Pages deployment
-        run: |
-          curl -X
